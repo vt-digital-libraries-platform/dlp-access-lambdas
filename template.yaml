@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  dlp-access-lambda
+
+  collectionTitleEditFunction: This will modify the titles for IAWA sub-collections to NOT include identifiers to collection table.
+  createCollectionMapFunction: This will create JSON files in the CollectionMap-yourenv S3 Bucket and update collection and collectionmap tables.
+  createCollectionHeirarchyFunction: This will update collection heirarchy information to collection table.
+  createUpdateFunction: This will update archive, collection, and collectionmap table's createdAt, etc fields.
+  archiveCollectionHeirarchyFunction: This will update archive/collection heirarchy information to archive table.
+
+
+Globals:
+  Function:
+    Timeout: 600
+
+Parameters: 
+    Region:
+      Type: String
+      Default: "us-east-1"
+    CollectionTable:
+      Type: String
+      Default: "Collection"
+    ArchiveTable:
+      Type: String
+      Default: "Archive"
+    CollectionmapTable:
+      Type: String
+      Default: "Collectionmap"
+    S3BucketName:
+      Type: String
+      Default: "collectionmapS3"
+
+Resources:
+  archiveCollectionHeirarchyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/
+      Handler: archiveCollectionHeirarchy.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Policies:
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionTable
+          - DynamoDBCrudPolicy:
+              TableName: !Ref ArchiveTable
+      Environment:
+          Variables:
+            REGION: !Ref Region
+            COLLECTIONTABLE_NAME: !Ref CollectionTable
+            ARCHIVETABLE_NAME: !Ref ArchiveTable
+
+  createUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/
+      Handler: createUpdate.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Policies:
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionTable
+          - DynamoDBCrudPolicy:
+              TableName: !Ref ArchiveTable
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionmapTable
+      Environment:
+          Variables:
+            REGION: !Ref Region
+            COLLECTIONTABLE_NAME: !Ref CollectionTable
+            ARCHIVETABLE_NAME: !Ref ArchiveTable
+            COLLECTIONMAPTABLE_NAME: !Ref CollectionmapTable
+
+  createCollectionMapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/
+      Handler: createCollectionMap.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Policies:
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionTable
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionmapTable
+          - S3CrudPolicy:
+              BucketName: !Ref S3BucketName
+      Environment:
+          Variables:
+            REGION: !Ref Region
+            COLLECTIONTABLE_NAME: !Ref CollectionTable
+            COLLECTIONMAPTABLE_NAME: !Ref CollectionmapTable
+            COLLECTIONMAP_BUCKETNAME: !Ref S3BucketName
+
+  createCollectionHeirarchyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/
+      Handler: createCollectionHeirarchy.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Policies:
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionTable
+      Environment:
+          Variables:
+            REGION: !Ref Region
+            COLLECTIONTABLE_NAME: !Ref CollectionTable
+
+  collectionTitleEditFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: apps/
+      Handler: collectionTitleEdit.lambda_handler
+      Runtime: python3.8
+      MemorySize: 2048
+      Policies:
+          - DynamoDBCrudPolicy:
+              TableName: !Ref CollectionTable
+      Environment:
+          Variables:
+            REGION: !Ref Region
+            COLLECTIONTABLE_NAME: !Ref CollectionTable
+
+Outputs:
+  archiveCollectionHeirarchyFunction:
+    Description: "archiveCollectionHeirarchy Lambda Function ARN"
+    Value: !GetAtt archiveCollectionHeirarchyFunction.Arn
+  createUpdateFunction:
+    Description: "createUpdate Lambda Function ARN"
+    Value: !GetAtt createUpdateFunction.Arn
+  createCollectionMapFunction:
+    Description: "createCollection Lambda Function ARN"
+    Value: !GetAtt createCollectionMapFunction.Arn
+  createCollectionHeirarchyFunction:
+    Description: "createCollectionHeirarchy Lambda Function ARN"
+    Value: !GetAtt createCollectionHeirarchyFunction.Arn
+  collectionTitleEditFunction:
+    Description: "collectionTitleEdit Lambda Function ARN"
+    Value: !GetAtt collectionTitleEditFunction.Arn
